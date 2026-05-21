@@ -3,8 +3,6 @@ import api from '../../api/axios';
 import { PieChart, Pie, Cell, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 
-const COLORS = { PRESENT: '#22c55e', ABSENT: '#ef4444' };
-
 function StudentDashboard() {
   const [profile, setProfile] = useState(null);
   const [summary, setSummary] = useState([]);
@@ -13,7 +11,7 @@ function StudentDashboard() {
   const [availableCourses, setAvailableCourses] = useState([]);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [scannerActive, setScannerActive] = useState(false);
-  const [activeTab, setActiveTab] = useState('overview'); // overview | courses | history
+  const [activeTab, setActiveTab] = useState('overview');
   const [enrolling, setEnrolling] = useState(null);
   const scannerRef = useRef(null);
 
@@ -38,22 +36,16 @@ function StudentDashboard() {
 
   useEffect(() => {
     fetchAll();
-    // Poll every 7 seconds so teacher modifications reflect immediately
     const interval = setInterval(fetchAll, 7000);
     return () => clearInterval(interval);
   }, [fetchAll]);
 
-  // Scanner lifecycle
   useEffect(() => {
     if (!scannerActive) return;
-
     const scanner = new Html5QrcodeScanner(
-      'qr-reader',
-      { fps: 10, qrbox: { width: 280, height: 280 } },
-      false
+      'qr-reader', { fps: 10, qrbox: { width: 280, height: 280 } }, false
     );
     scannerRef.current = scanner;
-
     scanner.render(
       (decodedText) => {
         scanner.pause(true);
@@ -63,9 +55,8 @@ function StudentDashboard() {
           markAttendance(decodedText);
         }).catch(console.error);
       },
-      () => {} // ignore frame errors
+      () => {}
     );
-
     return () => {
       if (scannerRef.current) {
         scannerRef.current.clear().catch(console.error);
@@ -81,10 +72,7 @@ function StudentDashboard() {
       setMessage({ type: 'success', text: '✅ Attendance marked successfully!' });
       fetchAll();
     } catch (err) {
-      setMessage({
-        type: 'error',
-        text: err.response?.data?.error || '❌ Failed to mark attendance.',
-      });
+      setMessage({ type: 'error', text: err.response?.data?.error || '❌ Failed to mark attendance.' });
     }
   };
 
@@ -92,7 +80,7 @@ function StudentDashboard() {
     setEnrolling(courseId);
     try {
       await api.post(`/student/courses/${courseId}/register`);
-      setMessage({ type: 'success', text: '✅ Successfully enrolled!' });
+      setMessage({ type: 'success', text: '✅ Enrolled successfully!' });
       fetchAll();
     } catch (err) {
       setMessage({ type: 'error', text: err.response?.data?.error || '❌ Enrollment failed.' });
@@ -101,12 +89,8 @@ function StudentDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = '/';
-  };
+  const handleLogout = () => { localStorage.clear(); window.location.href = '/'; };
 
-  // Chart data
   const totalClasses = summary.reduce((a, s) => a + s.totalClasses, 0);
   const totalAttended = summary.reduce((a, s) => a + s.attended, 0);
   const totalAbsent = totalClasses - totalAttended;
@@ -115,273 +99,253 @@ function StudentDashboard() {
     { name: 'Present', value: totalAttended },
     { name: 'Absent', value: totalAbsent },
   ];
+  const pctColor = overallPct >= 75 ? 'var(--success)' : overallPct >= 50 ? 'var(--warning)' : 'var(--error)';
 
-  const pctColor = overallPct >= 75 ? '#22c55e' : overallPct >= 50 ? '#f59e0b' : '#ef4444';
+  const tabs = [
+    { key: 'overview', label: '📊 Overview' },
+    { key: 'courses', label: '📚 Courses' },
+    { key: 'history', label: '📋 History' },
+  ];
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-color)', padding: '0' }}>
-      {/* Top Nav */}
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+      {/* ─── Navbar ─── */}
       <nav style={{
-        background: 'var(--card-bg)',
-        borderBottom: '1px solid var(--border-color)',
-        padding: '1rem 2rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        position: 'sticky',
-        top: 0,
-        zIndex: 100,
+        background: 'var(--surface)', borderBottom: '1px solid var(--border)',
+        padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between',
+        alignItems: 'center', position: 'sticky', top: 0, zIndex: 100,
+        backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{
-            width: 40, height: 40, borderRadius: '50%',
-            background: 'linear-gradient(135deg, var(--primary-color), #7c3aed)',
+            width: 36, height: 36, borderRadius: 10,
+            background: 'linear-gradient(135deg, var(--accent), #a78bfa)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontWeight: 'bold', fontSize: '1.2rem'
+            color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+            boxShadow: '0 2px 8px var(--accent-glow)',
           }}>
             {profile?.name?.charAt(0) || 'S'}
           </div>
           <div>
-            <div style={{ fontWeight: 600 }}>{profile?.name || 'Student'}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              Roll: {profile?.rollNumber} | Sem {profile?.semester} | {profile?.department}
+            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{profile?.name || 'Student'}</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              {profile?.rollNumber} · Sem {profile?.semester} · {profile?.department}
             </div>
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <div style={{
-            background: pctColor + '22', color: pctColor,
-            padding: '0.25rem 0.75rem', borderRadius: '999px',
-            fontWeight: 600, fontSize: '0.85rem'
+            background: pctColor === 'var(--success)' ? 'var(--success-bg)' :
+                        pctColor === 'var(--warning)' ? 'var(--warning-bg)' : 'var(--error-bg)',
+            color: pctColor,
+            padding: '0.2rem 0.7rem', borderRadius: 999,
+            fontWeight: 700, fontSize: '0.8rem',
+            border: `1px solid ${pctColor}33`,
           }}>
-            {overallPct}% Attendance
+            {overallPct}%
           </div>
-          <button onClick={handleLogout} className="btn" style={{
-            background: 'var(--error-color)', color: 'white', padding: '0.4rem 1rem', fontSize: '0.85rem'
-          }}>Logout</button>
+          <button onClick={handleLogout} className="btn btn-danger"
+            style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem' }}>
+            Logout
+          </button>
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '2rem 1rem' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem 1rem' }}>
 
-        {/* Message Banner */}
+        {/* ─── Message ─── */}
         {message.text && (
-          <div style={{
-            padding: '0.75rem 1rem',
-            borderRadius: '0.5rem',
-            marginBottom: '1.5rem',
-            background: message.type === 'error' ? '#ef444422' : '#22c55e22',
-            color: message.type === 'error' ? '#ef4444' : '#22c55e',
-            border: `1px solid ${message.type === 'error' ? '#ef4444' : '#22c55e'}44`,
-            fontWeight: 500,
+          <div className="animate-in" style={{
+            padding: '0.7rem 1rem', borderRadius: 'var(--radius-md)',
+            marginBottom: '1.25rem', fontSize: '0.875rem', fontWeight: 500,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: message.type === 'error' ? 'var(--error-bg)' : 'var(--success-bg)',
+            color: message.type === 'error' ? 'var(--error)' : 'var(--success)',
+            border: `1px solid ${message.type === 'error' ? 'rgba(248,113,113,0.2)' : 'rgba(52,211,153,0.2)'}`,
           }}>
-            {message.text}
+            <span>{message.text}</span>
             <button onClick={() => setMessage({ type: '', text: '' })} style={{
-              float: 'right', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit'
+              background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', fontSize: '1rem'
             }}>✕</button>
           </div>
         )}
 
-        {/* Scan QR Section */}
+        {/* ─── Scanner ─── */}
         <div className="card" style={{
-          marginBottom: '2rem',
-          background: 'linear-gradient(135deg, var(--primary-color)11, var(--card-bg))',
-          border: '2px solid var(--primary-color)44'
+          marginBottom: '1.5rem',
+          background: 'linear-gradient(135deg, var(--accent-subtle), var(--surface))',
+          border: '1px solid var(--accent)33',
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>📷 Mark Attendance</h2>
-              <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                Scan the QR code displayed by your teacher to mark yourself present.
+              <h2 style={{ margin: 0, fontSize: '1.15rem' }}>📷 Mark Attendance</h2>
+              <p style={{ margin: '0.2rem 0 0', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
+                Scan the QR code shown by your teacher
               </p>
             </div>
             {!scannerActive ? (
               <button onClick={() => { setMessage({ type: '', text: '' }); setScannerActive(true); }}
-                className="btn btn-primary" style={{ padding: '0.75rem 2rem', fontSize: '1rem' }}>
-                🔍 Scan QR Code
+                className="btn btn-primary" style={{ padding: '0.6rem 1.5rem' }}>
+                🔍 Scan QR
               </button>
             ) : (
-              <button onClick={() => setScannerActive(false)}
-                className="btn" style={{ background: '#ef4444', color: 'white', padding: '0.75rem 2rem' }}>
+              <button onClick={() => setScannerActive(false)} className="btn btn-danger"
+                style={{ padding: '0.6rem 1.5rem' }}>
                 ✕ Cancel
               </button>
             )}
           </div>
           {scannerActive && (
-            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
-              <div id="qr-reader" style={{ width: '100%', maxWidth: 400 }} />
+            <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'center' }}>
+              <div id="qr-reader" style={{ width: '100%', maxWidth: 380 }} />
             </div>
           )}
         </div>
 
-        {/* Tab Navigation */}
-        <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--border-color)', paddingBottom: '0' }}>
-          {[
-            { key: 'overview', label: '📊 Overview' },
-            { key: 'courses', label: '📚 Courses' },
-            { key: 'history', label: '📋 History' },
-          ].map(tab => (
+        {/* ─── Tabs ─── */}
+        <div style={{
+          display: 'flex', gap: '0.25rem', marginBottom: '1.5rem',
+          background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)',
+          padding: '0.3rem',
+        }}>
+          {tabs.map(tab => (
             <button key={tab.key} onClick={() => setActiveTab(tab.key)} style={{
-              background: 'none', border: 'none', cursor: 'pointer',
-              padding: '0.75rem 1.25rem', fontWeight: 600, fontSize: '0.9rem',
-              color: activeTab === tab.key ? 'var(--primary-color)' : 'var(--text-secondary)',
-              borderBottom: activeTab === tab.key ? '2px solid var(--primary-color)' : '2px solid transparent',
-              marginBottom: '-2px', transition: 'all 0.2s',
+              flex: 1, padding: '0.6rem', borderRadius: 'var(--radius-sm)',
+              border: 'none', cursor: 'pointer', fontFamily: 'inherit',
+              fontWeight: 600, fontSize: '0.85rem',
+              background: activeTab === tab.key ? 'var(--surface)' : 'transparent',
+              color: activeTab === tab.key ? 'var(--accent)' : 'var(--text-muted)',
+              boxShadow: activeTab === tab.key ? 'var(--shadow-sm)' : 'none',
+              transition: 'all var(--transition)',
             }}>{tab.label}</button>
           ))}
         </div>
 
-        {/* ========= OVERVIEW TAB ========= */}
+        {/* ═══ OVERVIEW ═══ */}
         {activeTab === 'overview' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-            {/* Overall Pie Chart */}
-            <div className="card" style={{ gridColumn: totalClasses > 0 ? 'auto' : '1 / -1' }}>
-              <h3 style={{ marginTop: 0 }}>Overall Attendance</h3>
-              {totalClasses > 0 ? (
-                <>
-                  <div style={{ height: 220 }}>
+          <div className="animate-in">
+            {/* Stats Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+              <StatCard label="Total Classes" value={totalClasses} icon="📅" color="var(--accent)" />
+              <StatCard label="Present" value={totalAttended} icon="✅" color="var(--success)" />
+              <StatCard label="Absent" value={totalAbsent} icon="❌" color="var(--error)" />
+              <StatCard label="Percentage" value={`${overallPct}%`} icon="📈" color={pctColor} />
+            </div>
+
+            {/* Chart + Course Breakdown */}
+            <div style={{ display: 'grid', gridTemplateColumns: totalClasses > 0 ? '320px 1fr' : '1fr', gap: '1.25rem' }}>
+              {totalClasses > 0 && (
+                <div className="card">
+                  <h3 style={{ marginTop: 0, fontSize: '0.95rem' }}>Attendance Split</h3>
+                  <div style={{ height: 200 }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <PieChart>
-                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={55} outerRadius={90}
-                          paddingAngle={4} dataKey="value">
-                          {chartData.map((entry, i) => (
-                            <Cell key={i} fill={i === 0 ? COLORS.PRESENT : COLORS.ABSENT} />
+                        <Pie data={chartData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+                          paddingAngle={4} dataKey="value" strokeWidth={0}>
+                          {chartData.map((_, i) => (
+                            <Cell key={i} fill={i === 0 ? '#34d399' : '#f87171'} />
                           ))}
                         </Pie>
-                        <Tooltip formatter={(v) => [v, 'Classes']} />
-                        <Legend />
+                        <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, color: 'var(--text-primary)' }} />
+                        <Legend wrapperStyle={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }} />
                       </PieChart>
                     </ResponsiveContainer>
                   </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-around', marginTop: '1rem' }}>
-                    <Stat label="Total" value={totalClasses} color="var(--text-color)" />
-                    <Stat label="Present" value={totalAttended} color={COLORS.PRESENT} />
-                    <Stat label="Absent" value={totalAbsent} color={COLORS.ABSENT} />
-                  </div>
-                </>
-              ) : (
-                <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem 0' }}>
-                  No classes conducted yet.
-                </p>
-              )}
-            </div>
-
-            {/* Course-wise Summary */}
-            <div className="card" style={{ gridColumn: '1 / -1' }}>
-              <h3 style={{ marginTop: 0 }}>Course-wise Breakdown</h3>
-              {summary.length === 0 ? (
-                <p style={{ color: 'var(--text-secondary)' }}>No enrolled courses with sessions yet.</p>
-              ) : (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                        <th style={{ padding: '0.75rem' }}>Course</th>
-                        <th style={{ padding: '0.75rem' }}>Total</th>
-                        <th style={{ padding: '0.75rem' }}>Present</th>
-                        <th style={{ padding: '0.75rem' }}>Absent</th>
-                        <th style={{ padding: '0.75rem' }}>%</th>
-                        <th style={{ padding: '0.75rem', minWidth: 120 }}>Progress</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {summary.map((item, i) => {
-                        const pct = item.percentage;
-                        const clr = pct >= 75 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
-                        return (
-                          <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                            <td style={{ padding: '0.75rem', fontWeight: 500 }}>{item.courseId}</td>
-                            <td style={{ padding: '0.75rem' }}>{item.totalClasses}</td>
-                            <td style={{ padding: '0.75rem', color: '#22c55e' }}>{item.attended}</td>
-                            <td style={{ padding: '0.75rem', color: '#ef4444' }}>{item.totalClasses - item.attended}</td>
-                            <td style={{ padding: '0.75rem', fontWeight: 700, color: clr }}>{pct}%</td>
-                            <td style={{ padding: '0.75rem' }}>
-                              <div style={{ background: 'var(--border-color)', borderRadius: 999, height: 8 }}>
-                                <div style={{ width: `${pct}%`, background: clr, height: 8, borderRadius: 999, transition: 'width 0.5s' }} />
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
                 </div>
               )}
+
+              <div className="card">
+                <h3 style={{ marginTop: 0, fontSize: '0.95rem' }}>Course Breakdown</h3>
+                {summary.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>No data yet</p>
+                ) : (
+                  <div style={{ overflowX: 'auto' }}>
+                    <table>
+                      <thead><tr>
+                        <th>Course</th><th>Total</th><th>Present</th><th>%</th><th>Progress</th>
+                      </tr></thead>
+                      <tbody>
+                        {summary.map((item, i) => {
+                          const pct = item.percentage;
+                          const clr = pct >= 75 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--error)';
+                          return (
+                            <tr key={i}>
+                              <td style={{ fontWeight: 500 }}>{item.courseId}</td>
+                              <td>{item.totalClasses}</td>
+                              <td style={{ color: 'var(--success)' }}>{item.attended}</td>
+                              <td style={{ fontWeight: 700, color: clr }}>{pct}%</td>
+                              <td style={{ minWidth: 100 }}>
+                                <div className="progress-bar">
+                                  <div className="progress-fill" style={{ width: `${pct}%`, background: clr }} />
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}
 
-        {/* ========= COURSES TAB ========= */}
+        {/* ═══ COURSES ═══ */}
         {activeTab === 'courses' && (
-          <div>
-            <h3>My Enrolled Courses</h3>
+          <div className="animate-in">
+            <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>My Enrolled Courses</h3>
             {myCourses.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>You are not enrolled in any courses yet.</p>
+              <div className="card" style={{ textAlign: 'center', padding: '2.5rem' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📚</div>
+                <p style={{ color: 'var(--text-muted)' }}>Not enrolled in any courses yet</p>
+              </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                 {myCourses.map(course => (
-                  <CourseCard key={course.id} course={course} enrolled={true} />
+                  <CourseCard key={course.id} course={course} enrolled />
                 ))}
               </div>
             )}
 
-            <h3>Available Courses</h3>
+            <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Available Courses</h3>
             {availableCourses.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>No new courses to enroll in right now.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>No new courses available</p>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
                 {availableCourses.map(course => (
-                  <CourseCard
-                    key={course.id}
-                    course={course}
-                    enrolled={false}
-                    onEnroll={() => handleEnroll(course.id)}
-                    enrolling={enrolling === course.id}
-                  />
+                  <CourseCard key={course.id} course={course} enrolled={false}
+                    onEnroll={() => handleEnroll(course.id)} enrolling={enrolling === course.id} />
                 ))}
               </div>
             )}
           </div>
         )}
 
-        {/* ========= HISTORY TAB ========= */}
+        {/* ═══ HISTORY ═══ */}
         {activeTab === 'history' && (
-          <div className="card">
-            <h3 style={{ marginTop: 0 }}>Attendance History</h3>
+          <div className="card animate-in">
+            <h3 style={{ marginTop: 0, fontSize: '1rem' }}>Attendance History</h3>
             {history.length === 0 ? (
-              <p style={{ color: 'var(--text-secondary)' }}>No attendance records found yet.</p>
+              <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>No records yet</p>
             ) : (
               <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                      <th style={{ padding: '0.75rem' }}>Date</th>
-                      <th style={{ padding: '0.75rem' }}>Course</th>
-                      <th style={{ padding: '0.75rem' }}>Code</th>
-                      <th style={{ padding: '0.75rem' }}>Status</th>
-                    </tr>
-                  </thead>
+                <table>
+                  <thead><tr>
+                    <th>Date</th><th>Course</th><th>Code</th><th>Status</th>
+                  </tr></thead>
                   <tbody>
                     {history.map((rec, i) => (
-                      <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                        <td style={{ padding: '0.75rem' }}>
-                          {new Date(rec.sessionDate).toLocaleString()}
-                        </td>
-                        <td style={{ padding: '0.75rem', fontWeight: 500 }}>{rec.courseName}</td>
-                        <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{rec.courseCode}</td>
-                        <td style={{ padding: '0.75rem' }}>
-                          <span style={{
-                            display: 'inline-block',
-                            padding: '0.2rem 0.75rem',
-                            borderRadius: 999,
-                            fontWeight: 600,
-                            fontSize: '0.8rem',
-                            background: rec.status === 'PRESENT' ? '#22c55e22' : '#ef444422',
-                            color: rec.status === 'PRESENT' ? '#22c55e' : '#ef4444',
-                          }}>
-                            {rec.status}
+                      <tr key={i}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          {new Date(rec.sessionDate).toLocaleDateString()}
+                          <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                            {new Date(rec.sessionDate).toLocaleTimeString()}
                           </span>
                         </td>
+                        <td style={{ fontWeight: 500 }}>{rec.courseName}</td>
+                        <td style={{ color: 'var(--text-secondary)' }}>{rec.courseCode}</td>
+                        <td><span className={`badge ${rec.status === 'PRESENT' ? 'badge-present' : 'badge-absent'}`}>{rec.status}</span></td>
                       </tr>
                     ))}
                   </tbody>
@@ -395,11 +359,17 @@ function StudentDashboard() {
   );
 }
 
-function Stat({ label, value, color }) {
+/* ─── Sub-Components ─── */
+function StatCard({ label, value, icon, color }) {
   return (
-    <div style={{ textAlign: 'center' }}>
-      <div style={{ fontSize: '1.75rem', fontWeight: 700, color }}>{value}</div>
-      <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{label}</div>
+    <div className="card" style={{
+      padding: '1rem', textAlign: 'center',
+      borderTop: `2px solid ${color}`,
+      marginBottom: 0,
+    }}>
+      <div style={{ fontSize: '1.25rem', marginBottom: '0.25rem' }}>{icon}</div>
+      <div style={{ fontSize: '1.5rem', fontWeight: 700, color }}>{value}</div>
+      <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
     </div>
   );
 }
@@ -407,21 +377,18 @@ function Stat({ label, value, color }) {
 function CourseCard({ course, enrolled, onEnroll, enrolling }) {
   return (
     <div className="card" style={{
-      borderLeft: `4px solid ${enrolled ? '#22c55e' : 'var(--primary-color)'}`,
-      padding: '1.25rem',
+      padding: '1.25rem', marginBottom: 0,
+      borderLeft: `3px solid ${enrolled ? 'var(--success)' : 'var(--accent)'}`,
     }}>
-      <div style={{ fontWeight: 700, fontSize: '1.05rem', marginBottom: '0.35rem' }}>{course.courseName}</div>
-      <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.75rem' }}>
-        📌 {course.courseCode} | Sem {course.semester} | {course.department}
+      <div style={{ fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.3rem' }}>{course.courseName}</div>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.75rem' }}>
+        {course.courseCode} · Sem {course.semester} · {course.department}
       </div>
       {enrolled ? (
-        <span style={{ color: '#22c55e', fontSize: '0.8rem', fontWeight: 600 }}>✅ Enrolled</span>
+        <span className="badge badge-present">Enrolled</span>
       ) : (
-        <button
-          onClick={onEnroll}
-          disabled={enrolling}
-          className="btn btn-primary"
-          style={{ width: '100%', padding: '0.5rem', fontSize: '0.85rem' }}>
+        <button onClick={onEnroll} disabled={enrolling} className="btn btn-primary"
+          style={{ width: '100%', padding: '0.45rem', fontSize: '0.8rem' }}>
           {enrolling ? 'Enrolling...' : '+ Enroll'}
         </button>
       )}

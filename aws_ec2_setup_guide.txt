@@ -1,0 +1,94 @@
+========================================================================
+GUIDE: CREATING AN AWS EC2 INSTANCE UNDER THE FREE TIER
+========================================================================
+
+Follow these exact steps to launch a secure, Free Tier eligible Ubuntu server
+on AWS to run your Jenkins, Docker, and Attendance Application stack.
+
+------------------------------------------------------------------------
+STEP 1: LOG IN AND CHOOSE A REGION
+------------------------------------------------------------------------
+1. Go to https://aws.amazon.com/ console and log into your Free Tier account.
+2. In the top-right corner, select your preferred Region.
+   - Standard choices: "us-east-1 (N. Virginia)" or your nearest local region (e.g. "ap-south-1 (Mumbai)").
+
+------------------------------------------------------------------------
+STEP 2: NAVIGATE TO EC2 AND LAUNCH INSTANCE
+------------------------------------------------------------------------
+1. Search for "EC2" in the top search bar and click on the "EC2" service.
+2. In the EC2 Dashboard, click the orange "Launch instance" button.
+
+------------------------------------------------------------------------
+STEP 3: INSTANCE METADATA AND OS (AMI)
+------------------------------------------------------------------------
+1. Name: attendance-devops-server
+2. Application and OS Images (Amazon Machine Image - AMI):
+   - Select "Ubuntu" (it is extremely stable and widely used for DevOps).
+   - Under "Amazon Machine Image (AMI)" dropdown, ensure you select:
+     * Ubuntu Server 24.04 LTS (HVM), SSD Volume Type.
+     * Confirm it says "Free tier eligible" directly underneath it.
+   - Architecture: 64-bit (x86) (default).
+
+------------------------------------------------------------------------
+STEP 4: INSTANCE TYPE
+------------------------------------------------------------------------
+1. Under "Instance type", select:
+   - t2.micro (1 vCPU, 1 GiB Memory).
+     * Note: In some regions, "t3.micro" is free instead of t2.micro. Choose the one that has the green "Free tier eligible" tag.
+
+------------------------------------------------------------------------
+STEP 5: CREATE KEY PAIR (FOR SECURE SSH ACCESS)
+------------------------------------------------------------------------
+1. Under "Key pair (login)", click "Create new key pair".
+2. Configure it:
+   - Key pair name: attendance-key
+   - Key pair type: RSA (default)
+   - Private key file format: .pem (Standard for OpenSSH/Linux terminal)
+3. Click "Create key pair".
+   * This will automatically download a file named "attendance-key.pem" to your computer. Keep this file safe; you will need it to log in!
+
+------------------------------------------------------------------------
+STEP 6: NETWORK SETTINGS (SECURITY GROUP / FIREWALL)
+------------------------------------------------------------------------
+A Security Group controls what traffic is allowed in and out of your server.
+1. Under "Network settings", choose "Create security group".
+2. Check the box for:
+   - Allow SSH traffic from (Select "My IP" or "Anywhere 0.0.0.0/0" for convenience).
+3. We need to open ports for our apps. Click "Add security group rule" for each of the following:
+   - Rule 1 (For SSH access):
+     * Type: SSH | Port: 22 | Source: Anywhere (0.0.0.0/0)
+   - Rule 2 (For HTTP Web access):
+     * Type: HTTP | Port: 80 | Source: Anywhere (0.0.0.0/0)
+   - Rule 3 (For Frontend Docker Container):
+     * Type: Custom TCP | Port: 3000 | Source: Anywhere (0.0.0.0/0)
+   - Rule 4 (For Backend Docker Container):
+     * Type: Custom TCP | Port: 8080 | Source: Anywhere (0.0.0.0/0)
+   - Rule 5 (For Jenkins Server UI):
+     * Type: Custom TCP | Port: 8090 | Source: Anywhere (0.0.0.0/0)
+
+------------------------------------------------------------------------
+STEP 7: CONFIGURE STORAGE
+------------------------------------------------------------------------
+AWS Free Tier includes up to 30 GB of free SSD storage.
+1. Under "Configure storage", change the size to:
+   - 30 GiB (Default is 8 GiB; you can increase this to 30 for free to handle Docker images).
+2. Volume type: gp3 (Default).
+
+------------------------------------------------------------------------
+STEP 8: LAUNCH!
+------------------------------------------------------------------------
+1. Review your configurations in the Summary box on the right.
+2. Click the orange "Launch instance" button.
+3. Once completed, click "View all instances". Wait a minute for the "Status check" to show "2/2 checks passed".
+
+------------------------------------------------------------------------
+STEP 9: CONNECT TO YOUR SERVER (SSH)
+------------------------------------------------------------------------
+1. Open a terminal on your host machine.
+2. Go to the folder where you downloaded the "attendance-key.pem" key:
+   cd ~/Downloads
+3. Set the correct file permissions on the key (required by SSH):
+   chmod 400 attendance-key.pem
+4. Connect to your server using its Public IP (find this in the EC2 instance dashboard):
+   ssh -i attendance-key.pem ubuntu@[YOUR_EC2_PUBLIC_IP]
+========================================================================

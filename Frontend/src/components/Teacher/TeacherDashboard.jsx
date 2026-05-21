@@ -9,40 +9,31 @@ function TeacherDashboard() {
   const [activeSession, setActiveSession] = useState(null);
   const [sessionRecords, setSessionRecords] = useState([]);
   const [error, setError] = useState('');
-  const [activeTab, setActiveTab] = useState('courses'); // courses | session | manage
+  const [activeTab, setActiveTab] = useState('courses');
   const [selectedCourse, setSelectedCourse] = useState(null);
   const [enrolledStudents, setEnrolledStudents] = useState([]);
   const [studentHistory, setStudentHistory] = useState(null);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [loadingStudents, setLoadingStudents] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
 
   const fetchProfile = useCallback(async () => {
-    try {
-      const res = await api.get('/teacher/profile');
-      setProfile(res.data);
-    } catch (err) { console.error(err); }
+    try { const res = await api.get('/teacher/profile'); setProfile(res.data); }
+    catch (err) { console.error(err); }
   }, []);
 
   const fetchCourses = useCallback(async () => {
-    try {
-      const res = await api.get('/teacher/courses');
-      setCourses(res.data);
-    } catch (err) { console.error(err); }
+    try { const res = await api.get('/teacher/courses'); setCourses(res.data); }
+    catch (err) { console.error(err); }
   }, []);
 
   const fetchSessionRecords = useCallback(async (sessionId) => {
-    try {
-      const res = await api.get(`/classroom/session/${sessionId}/records`);
-      setSessionRecords(res.data);
-    } catch (err) { console.error(err); }
+    try { const res = await api.get(`/classroom/session/${sessionId}/records`); setSessionRecords(res.data); }
+    catch (err) { console.error(err); }
   }, []);
 
-  useEffect(() => {
-    fetchProfile();
-    fetchCourses();
-  }, []);
+  useEffect(() => { fetchProfile(); fetchCourses(); }, []);
 
-  // Live poll when session is active
   useEffect(() => {
     if (!activeSession) return;
     fetchSessionRecords(activeSession.sessionId);
@@ -51,48 +42,31 @@ function TeacherDashboard() {
   }, [activeSession, fetchSessionRecords]);
 
   const handleCreateCourse = async (e) => {
-    e.preventDefault();
-    setError('');
+    e.preventDefault(); setError('');
     try {
       await api.post('/classroom/course', { ...newCourse, semester: parseInt(newCourse.semester) });
       setNewCourse({ courseCode: '', courseName: '', department: '', semester: '' });
+      setShowCreateForm(false);
       fetchCourses();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create course');
-    }
+    } catch (err) { setError(err.response?.data?.error || 'Failed to create course'); }
   };
 
   const handleStartSession = async (courseId) => {
     setError('');
-    try {
-      const res = await api.post('/classroom/session/start', { courseId });
-      setActiveSession(res.data);
-      setActiveTab('session');
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to start session');
-    }
+    try { const res = await api.post('/classroom/session/start', { courseId }); setActiveSession(res.data); setActiveTab('session'); }
+    catch (err) { setError(err.response?.data?.error || 'Failed to start session'); }
   };
 
   const handleStopSession = async () => {
     if (!activeSession) return;
-    try {
-      await api.post(`/classroom/session/${activeSession.sessionId}/stop`);
-      setActiveSession(null);
-      setSessionRecords([]);
-      setActiveTab('courses');
-    } catch (err) {
-      setError('Failed to stop session');
-    }
+    try { await api.post(`/classroom/session/${activeSession.sessionId}/stop`); setActiveSession(null); setSessionRecords([]); setActiveTab('courses'); }
+    catch (err) { setError('Failed to stop session'); }
   };
 
   const handleRefreshQR = async () => {
     if (!activeSession) return;
-    try {
-      const res = await api.post('/classroom/session/refresh', { sessionId: activeSession.sessionId });
-      setActiveSession(res.data);
-    } catch (err) {
-      setError('Failed to refresh QR');
-    }
+    try { const res = await api.post('/classroom/session/refresh', { sessionId: activeSession.sessionId }); setActiveSession(res.data); }
+    catch (err) { setError('Failed to refresh QR'); }
   };
 
   const handleModifyAttendance = async (studentId, status, sessionId) => {
@@ -100,37 +74,21 @@ function TeacherDashboard() {
     try {
       await api.put(`/classroom/session/${sid}/attendance/${studentId}`, { status });
       if (activeSession) fetchSessionRecords(activeSession.sessionId);
-      if (studentHistory && selectedStudent) {
-        loadStudentHistory(selectedCourse.id, selectedStudent.id);
-      }
-    } catch (err) {
-      alert(err.response?.data?.error || 'Failed to modify attendance');
-    }
+      if (studentHistory && selectedStudent) loadStudentHistory(selectedCourse.id, selectedStudent.id);
+    } catch (err) { alert(err.response?.data?.error || 'Failed to modify'); }
   };
 
   const loadCourseStudents = async (course) => {
-    setSelectedCourse(course);
-    setSelectedStudent(null);
-    setStudentHistory(null);
+    setSelectedCourse(course); setSelectedStudent(null); setStudentHistory(null);
     setLoadingStudents(true);
-    try {
-      const res = await api.get(`/classroom/course/${course.id}/students`);
-      setEnrolledStudents(res.data);
-      setActiveTab('manage');
-    } catch (err) {
-      setError('Failed to load students');
-    } finally {
-      setLoadingStudents(false);
-    }
+    try { const res = await api.get(`/classroom/course/${course.id}/students`); setEnrolledStudents(res.data); setActiveTab('manage'); }
+    catch (err) { setError('Failed to load students'); }
+    finally { setLoadingStudents(false); }
   };
 
   const loadStudentHistory = async (courseId, studentId) => {
-    try {
-      const res = await api.get(`/classroom/course/${courseId}/student/${studentId}/history`);
-      setStudentHistory(res.data);
-    } catch (err) {
-      alert('Failed to load student history');
-    }
+    try { const res = await api.get(`/classroom/course/${courseId}/student/${studentId}/history`); setStudentHistory(res.data); }
+    catch (err) { alert('Failed to load history'); }
   };
 
   const handleStudentClick = (student) => {
@@ -138,240 +96,376 @@ function TeacherDashboard() {
     loadStudentHistory(selectedCourse.id, student.id);
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = '/';
-  };
+  const handleLogout = () => { localStorage.clear(); window.location.href = '/'; };
+
+  const presentCount = sessionRecords.filter(r => r.status === 'PRESENT').length;
 
   const tabs = [
-    { key: 'courses', label: '📚 My Courses' },
-    { key: 'session', label: activeSession ? '🟢 Live Session' : '⭕ Session', disabled: !activeSession },
-    { key: 'manage', label: '👥 Manage Students', disabled: !selectedCourse },
+    { key: 'courses', label: '📚 Courses' },
+    { key: 'session', label: activeSession ? '🟢 Live' : '⭕ Session', disabled: !activeSession },
+    { key: 'manage', label: '👥 Students', disabled: !selectedCourse },
   ];
 
   return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-color)' }}>
-      {/* Nav */}
+    <div style={{ minHeight: '100vh', background: 'var(--bg-primary)' }}>
+      {/* ─── Nav ─── */}
       <nav style={{
-        background: 'var(--card-bg)', borderBottom: '1px solid var(--border-color)',
-        padding: '1rem 2rem', display: 'flex', justifyContent: 'space-between',
+        background: 'var(--surface)', borderBottom: '1px solid var(--border)',
+        padding: '0.75rem 1.5rem', display: 'flex', justifyContent: 'space-between',
         alignItems: 'center', position: 'sticky', top: 0, zIndex: 100,
+        backdropFilter: 'blur(16px)',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{
-            width: 40, height: 40, borderRadius: '50%',
-            background: 'linear-gradient(135deg, #7c3aed, var(--primary-color))',
+            width: 36, height: 36, borderRadius: 10,
+            background: 'linear-gradient(135deg, #8b5cf6, var(--accent))',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: 'white', fontWeight: 'bold', fontSize: '1.2rem'
+            color: '#fff', fontWeight: 700, fontSize: '0.9rem',
+            boxShadow: '0 2px 8px rgba(139, 92, 246, 0.2)',
           }}>
             {profile?.name?.charAt(0) || 'T'}
           </div>
           <div>
-            <div style={{ fontWeight: 600 }}>{profile?.name || 'Teacher'}</div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              {profile?.department} | {profile?.employeeCode}
+            <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{profile?.name || 'Teacher'}</div>
+            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+              {profile?.department} · {profile?.employeeCode}
             </div>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           {activeSession && (
             <span style={{
-              background: '#22c55e22', color: '#22c55e',
-              padding: '0.25rem 0.75rem', borderRadius: 999, fontWeight: 600, fontSize: '0.8rem',
-              animation: 'pulse 2s infinite'
+              display: 'inline-flex', alignItems: 'center', gap: '0.35rem',
+              background: 'var(--success-bg)', color: 'var(--success)',
+              padding: '0.2rem 0.65rem', borderRadius: 999,
+              fontWeight: 700, fontSize: '0.75rem',
+              border: '1px solid rgba(52,211,153,0.2)',
             }}>
-              ● LIVE SESSION
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--success)', animation: 'pulse-dot 1.5s infinite' }} />
+              LIVE
             </span>
           )}
-          <button onClick={handleLogout} className="btn" style={{
-            background: 'var(--error-color)', color: 'white', padding: '0.4rem 1rem', fontSize: '0.85rem'
-          }}>Logout</button>
+          <button onClick={handleLogout} className="btn btn-danger"
+            style={{ padding: '0.35rem 0.8rem', fontSize: '0.8rem' }}>
+            Logout
+          </button>
         </div>
       </nav>
 
-      <div style={{ maxWidth: 1200, margin: '0 auto', padding: '2rem 1rem' }}>
+      <div style={{ maxWidth: 1100, margin: '0 auto', padding: '1.5rem 1rem' }}>
 
-        {/* Error Banner */}
+        {/* Error */}
         {error && (
-          <div style={{
-            padding: '0.75rem 1rem', borderRadius: '0.5rem', marginBottom: '1.5rem',
-            background: '#ef444422', color: '#ef4444', border: '1px solid #ef444444', fontWeight: 500,
+          <div className="animate-in" style={{
+            padding: '0.7rem 1rem', borderRadius: 'var(--radius-md)',
+            marginBottom: '1.25rem', fontSize: '0.85rem', fontWeight: 500,
+            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+            background: 'var(--error-bg)', color: 'var(--error)',
+            border: '1px solid rgba(248,113,113,0.2)',
           }}>
-            {error}
-            <button onClick={() => setError('')} style={{ float: 'right', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>✕</button>
+            <span>⚠️ {error}</span>
+            <button onClick={() => setError('')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}>✕</button>
           </div>
         )}
 
-        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: '2rem', alignItems: 'start' }}>
+        {/* ─── Tabs ─── */}
+        <div style={{
+          display: 'flex', gap: '0.25rem', marginBottom: '1.5rem',
+          background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0.3rem',
+        }}>
+          {tabs.map(tab => (
+            <button key={tab.key}
+              onClick={() => !tab.disabled && setActiveTab(tab.key)}
+              disabled={tab.disabled}
+              style={{
+                flex: 1, padding: '0.6rem', borderRadius: 'var(--radius-sm)',
+                border: 'none', cursor: tab.disabled ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit', fontWeight: 600, fontSize: '0.85rem',
+                background: activeTab === tab.key ? 'var(--surface)' : 'transparent',
+                color: tab.disabled ? 'var(--text-muted)' : activeTab === tab.key ? 'var(--accent)' : 'var(--text-secondary)',
+                boxShadow: activeTab === tab.key ? 'var(--shadow-sm)' : 'none',
+                transition: 'all var(--transition)', opacity: tab.disabled ? 0.5 : 1,
+              }}>
+              {tab.label}
+            </button>
+          ))}
+        </div>
 
-          {/* Sidebar */}
-          <div>
-            {/* Create Course */}
-            <div className="card" style={{ marginBottom: '1.5rem' }}>
-              <h3 style={{ marginTop: 0, fontSize: '1rem' }}>➕ Create Course</h3>
-              <form onSubmit={handleCreateCourse}>
-                <div className="form-group">
-                  <label>Course Code</label>
-                  <input type="text" placeholder="e.g. CS301" value={newCourse.courseCode}
-                    onChange={e => setNewCourse({ ...newCourse, courseCode: e.target.value })} required />
+        {/* ═══════ COURSES ═══════ */}
+        {activeTab === 'courses' && (
+          <div className="animate-in">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.15rem' }}>My Courses</h2>
+              <button onClick={() => setShowCreateForm(!showCreateForm)}
+                className={showCreateForm ? 'btn btn-ghost' : 'btn btn-primary'}
+                style={{ padding: '0.5rem 1rem', fontSize: '0.8rem' }}>
+                {showCreateForm ? '✕ Cancel' : '+ New Course'}
+              </button>
+            </div>
+
+            {/* Create Form */}
+            {showCreateForm && (
+              <div className="card animate-in" style={{
+                marginBottom: '1.5rem',
+                border: '1px solid var(--accent)33',
+                background: 'linear-gradient(135deg, var(--accent-subtle), var(--surface))',
+              }}>
+                <h3 style={{ marginTop: 0, fontSize: '0.95rem' }}>Create New Course</h3>
+                <form onSubmit={handleCreateCourse}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 1rem' }}>
+                    <div className="form-group">
+                      <label>Course Code</label>
+                      <input type="text" placeholder="e.g. CS301" value={newCourse.courseCode}
+                        onChange={e => setNewCourse({ ...newCourse, courseCode: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Course Name</label>
+                      <input type="text" placeholder="e.g. Data Structures" value={newCourse.courseName}
+                        onChange={e => setNewCourse({ ...newCourse, courseName: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Department</label>
+                      <input type="text" placeholder="e.g. CSE" value={newCourse.department}
+                        onChange={e => setNewCourse({ ...newCourse, department: e.target.value })} required />
+                    </div>
+                    <div className="form-group">
+                      <label>Semester</label>
+                      <input type="number" min={1} max={8} placeholder="1-8" value={newCourse.semester}
+                        onChange={e => setNewCourse({ ...newCourse, semester: e.target.value })} required />
+                    </div>
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.65rem' }}>
+                    Create Course
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {/* Course List */}
+            {courses.length === 0 ? (
+              <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
+                <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>📚</div>
+                <p style={{ color: 'var(--text-muted)' }}>No courses yet. Create your first course!</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {courses.map(course => (
+                  <div key={course.id} className="card" style={{
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    flexWrap: 'wrap', gap: '1rem', marginBottom: 0,
+                    borderLeft: '3px solid var(--accent)',
+                  }}>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: '0.95rem' }}>
+                        {course.courseCode} — {course.courseName}
+                      </div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.2rem' }}>
+                        Sem {course.semester} · {course.department}
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <button onClick={() => loadCourseStudents(course)} className="btn btn-ghost"
+                        style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                        👥 Students
+                      </button>
+                      <button onClick={() => handleStartSession(course.id)} disabled={activeSession !== null}
+                        className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                        ▶ Start Session
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ═══════ SESSION ═══════ */}
+        {activeTab === 'session' && activeSession && (
+          <div className="animate-in">
+            {/* QR Card */}
+            <div className="card" style={{
+              border: '1px solid rgba(52,211,153,0.3)',
+              background: 'linear-gradient(135deg, rgba(52,211,153,0.04), var(--surface))',
+              marginBottom: '1.25rem',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem' }}>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--success)' }}>🟢 Live Session</h2>
+                  <p style={{ margin: '0.15rem 0 0', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                    Expires: {new Date(activeSession.expiresAt).toLocaleTimeString()}
+                  </p>
                 </div>
-                <div className="form-group">
-                  <label>Course Name</label>
-                  <input type="text" placeholder="e.g. Data Structures" value={newCourse.courseName}
-                    onChange={e => setNewCourse({ ...newCourse, courseName: e.target.value })} required />
+                <div style={{ display: 'flex', gap: '0.4rem' }}>
+                  <button onClick={handleRefreshQR} className="btn btn-ghost" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                    🔄 Refresh
+                  </button>
+                  <button onClick={handleStopSession} className="btn btn-danger" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>
+                    ⏹ End
+                  </button>
                 </div>
-                <div className="form-group">
-                  <label>Department</label>
-                  <input type="text" placeholder="e.g. CSE" value={newCourse.department}
-                    onChange={e => setNewCourse({ ...newCourse, department: e.target.value })} required />
+              </div>
+
+              <div style={{
+                display: 'flex', justifyContent: 'center', padding: '1.5rem',
+                background: '#ffffff', borderRadius: 'var(--radius-lg)',
+                boxShadow: '0 0 24px rgba(52,211,153,0.1)',
+              }}>
+                <QRCodeSVG value={activeSession.qrToken} size={360} level="L" includeMargin={true} />
+              </div>
+            </div>
+
+            {/* Live Attendance Table */}
+            <div className="card">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                <h3 style={{ margin: 0, fontSize: '0.95rem' }}>Live Attendance</h3>
+                <span className="badge badge-present" style={{ fontSize: '0.75rem' }}>
+                  {presentCount} Present
+                </span>
+              </div>
+              {sessionRecords.length === 0 ? (
+                <p style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0', fontSize: '0.9rem' }}>
+                  ⏳ Waiting for students to scan...
+                </p>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table>
+                    <thead><tr>
+                      <th>Name</th><th>Roll No</th><th>Status</th><th>Override</th>
+                    </tr></thead>
+                    <tbody>
+                      {sessionRecords.map((rec, i) => (
+                        <tr key={i}>
+                          <td style={{ fontWeight: 500 }}>{rec.studentName}</td>
+                          <td style={{ color: 'var(--text-secondary)' }}>{rec.rollNumber}</td>
+                          <td><span className={`badge ${rec.status === 'PRESENT' ? 'badge-present' : 'badge-absent'}`}>{rec.status}</span></td>
+                          <td>
+                            {rec.status === 'PRESENT' ? (
+                              <button onClick={() => handleModifyAttendance(rec.studentId, 'ABSENT')}
+                                className="btn btn-danger" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
+                                → Absent
+                              </button>
+                            ) : (
+                              <button onClick={() => handleModifyAttendance(rec.studentId, 'PRESENT')}
+                                className="btn btn-success" style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
+                                → Present
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="form-group">
-                  <label>Semester</label>
-                  <input type="number" min={1} max={8} placeholder="1-8" value={newCourse.semester}
-                    onChange={e => setNewCourse({ ...newCourse, semester: e.target.value })} required />
-                </div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>Create Course</button>
-              </form>
+              )}
             </div>
           </div>
+        )}
 
-          {/* Main Panel */}
-          <div>
-            {/* Tab Bar */}
-            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '2px solid var(--border-color)', paddingBottom: 0 }}>
-              {tabs.map(tab => (
-                <button key={tab.key}
-                  onClick={() => !tab.disabled && setActiveTab(tab.key)}
-                  disabled={tab.disabled}
-                  style={{
-                    background: 'none', border: 'none', cursor: tab.disabled ? 'not-allowed' : 'pointer',
-                    padding: '0.75rem 1.25rem', fontWeight: 600, fontSize: '0.9rem',
-                    color: tab.disabled ? 'var(--border-color)' : activeTab === tab.key ? 'var(--primary-color)' : 'var(--text-secondary)',
-                    borderBottom: activeTab === tab.key ? '2px solid var(--primary-color)' : '2px solid transparent',
-                    marginBottom: '-2px', transition: 'all 0.2s',
-                  }}>
-                  {tab.label}
-                </button>
-              ))}
+        {/* ═══════ MANAGE STUDENTS ═══════ */}
+        {activeTab === 'manage' && selectedCourse && (
+          <div className="animate-in">
+            <div style={{ marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.1rem' }}>
+                {selectedCourse.courseName}
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 400, marginLeft: '0.5rem' }}>
+                  ({selectedCourse.courseCode})
+                </span>
+              </h2>
             </div>
 
-            {/* ===== COURSES TAB ===== */}
-            {activeTab === 'courses' && (
-              <div>
-                {courses.length === 0 ? (
-                  <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>
-                    <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📚</div>
-                    <p style={{ color: 'var(--text-secondary)' }}>No courses yet. Create your first course!</p>
-                  </div>
+            <div style={{ display: 'grid', gridTemplateColumns: studentHistory ? '1fr 1.3fr' : '1fr', gap: '1.25rem' }}>
+              {/* Student List */}
+              <div className="card">
+                <h3 style={{ marginTop: 0, fontSize: '0.95rem' }}>
+                  Students
+                  <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)', fontWeight: 400 }}>
+                    ({enrolledStudents.length})
+                  </span>
+                </h3>
+                {loadingStudents ? (
+                  <p style={{ color: 'var(--text-muted)' }}>Loading...</p>
+                ) : enrolledStudents.length === 0 ? (
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No students enrolled yet</p>
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {courses.map(course => (
-                      <div key={course.id} className="card" style={{
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                        flexWrap: 'wrap', gap: '1rem', borderLeft: '4px solid var(--primary-color)'
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {enrolledStudents.map(student => (
+                      <div key={student.id} onClick={() => handleStudentClick(student)} style={{
+                        padding: '0.65rem 0.9rem', borderRadius: 'var(--radius-sm)',
+                        cursor: 'pointer',
+                        background: selectedStudent?.id === student.id ? 'var(--accent-subtle)' : 'var(--bg-secondary)',
+                        border: `1px solid ${selectedStudent?.id === student.id ? 'var(--accent)33' : 'var(--border)'}`,
+                        transition: 'all var(--transition)',
                       }}>
-                        <div>
-                          <div style={{ fontWeight: 700, fontSize: '1.05rem' }}>
-                            {course.courseCode} — {course.courseName}
-                          </div>
-                          <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '0.2rem' }}>
-                            Sem {course.semester} | {course.department}
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <button
-                            onClick={() => loadCourseStudents(course)}
-                            className="btn"
-                            style={{ background: 'var(--border-color)', color: 'var(--text-color)', padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-                            👥 Students
-                          </button>
-                          <button
-                            onClick={() => handleStartSession(course.id)}
-                            disabled={activeSession !== null}
-                            className="btn btn-primary"
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>
-                            {activeSession?.courseId === course.id ? '🟢 Running' : '▶ Start Session'}
-                          </button>
+                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>{student.name}</div>
+                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                          Roll: {student.rollNumber} · Sem {student.semester}
                         </div>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            )}
 
-            {/* ===== SESSION TAB ===== */}
-            {activeTab === 'session' && activeSession && (
-              <div>
-                {/* QR Card */}
-                <div className="card" style={{ border: '2px solid #22c55e', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div>
-                      <h2 style={{ margin: 0, color: '#22c55e' }}>🟢 Live QR Session</h2>
-                      <p style={{ margin: '0.25rem 0 0', color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
-                        Expires: {new Date(activeSession.expiresAt).toLocaleTimeString()}
-                      </p>
-                    </div>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={handleRefreshQR} className="btn"
-                        style={{ background: '#f59e0b22', color: '#f59e0b', border: '1px solid #f59e0b44' }}>
-                        🔄 Refresh QR
-                      </button>
-                      <button onClick={handleStopSession} className="btn"
-                        style={{ background: '#ef444422', color: '#ef4444', border: '1px solid #ef444444' }}>
-                        ⏹ End Session
-                      </button>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem', background: 'white', borderRadius: '1rem' }}>
-                    <QRCodeSVG value={activeSession.qrToken} size={380} level="L" includeMargin={true} />
-                  </div>
-                </div>
-
-                {/* Live Attendance */}
-                <div className="card">
-                  <h3 style={{ marginTop: 0 }}>
-                    Live Attendance
-                    <span style={{ marginLeft: '0.75rem', background: '#22c55e22', color: '#22c55e', borderRadius: 999, padding: '0.15rem 0.6rem', fontSize: '0.8rem', fontWeight: 600 }}>
-                      {sessionRecords.filter(r => r.status === 'PRESENT').length} Present
+              {/* History Panel */}
+              {studentHistory && selectedStudent && (
+                <div className="card animate-in">
+                  <h3 style={{ marginTop: 0, fontSize: '0.95rem' }}>
+                    {selectedStudent.name}
+                    <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)' }}>
+                      ({selectedStudent.rollNumber})
                     </span>
                   </h3>
-                  {sessionRecords.length === 0 ? (
-                    <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem 0' }}>
-                      Waiting for students to scan...
-                    </p>
+
+                  {/* Summary Bar */}
+                  {studentHistory.length > 0 && (() => {
+                    const present = studentHistory.filter(r => r.status === 'PRESENT').length;
+                    const total = studentHistory.length;
+                    const pct = total > 0 ? Math.round((present / total) * 100) : 0;
+                    const clr = pct >= 75 ? 'var(--success)' : pct >= 50 ? 'var(--warning)' : 'var(--error)';
+                    return (
+                      <div style={{
+                        display: 'flex', justifyContent: 'space-around', alignItems: 'center',
+                        padding: '0.7rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)',
+                        fontSize: '0.8rem', marginBottom: '1rem',
+                      }}>
+                        <span>📅 <b>{total}</b></span>
+                        <span style={{ color: 'var(--success)' }}>✅ <b>{present}</b></span>
+                        <span style={{ color: 'var(--error)' }}>❌ <b>{total - present}</b></span>
+                        <span style={{ color: clr, fontWeight: 700 }}>{pct}%</span>
+                      </div>
+                    );
+                  })()}
+
+                  {studentHistory.length === 0 ? (
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No sessions yet</p>
                   ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left' }}>
-                            <th style={{ padding: '0.75rem' }}>Name</th>
-                            <th style={{ padding: '0.75rem' }}>Roll No</th>
-                            <th style={{ padding: '0.75rem' }}>Status</th>
-                            <th style={{ padding: '0.75rem' }}>Override</th>
-                          </tr>
-                        </thead>
+                    <div style={{ overflowY: 'auto', maxHeight: 360 }}>
+                      <table>
+                        <thead><tr>
+                          <th>Date</th><th>Status</th><th>Override</th>
+                        </tr></thead>
                         <tbody>
-                          {sessionRecords.map((record, i) => (
-                            <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                              <td style={{ padding: '0.75rem', fontWeight: 500 }}>{record.studentName}</td>
-                              <td style={{ padding: '0.75rem', color: 'var(--text-secondary)' }}>{record.rollNumber}</td>
-                              <td style={{ padding: '0.75rem' }}>
-                                <StatusBadge status={record.status} />
+                          {studentHistory.map((rec, i) => (
+                            <tr key={i}>
+                              <td style={{ whiteSpace: 'nowrap' }}>
+                                {new Date(rec.sessionDate).toLocaleDateString()}
+                                <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)' }}>
+                                  {new Date(rec.sessionDate).toLocaleTimeString()}
+                                </span>
                               </td>
-                              <td style={{ padding: '0.75rem' }}>
-                                {record.status === 'PRESENT' ? (
-                                  <ActionBtn
-                                    label="Mark Absent"
-                                    onClick={() => handleModifyAttendance(record.studentId, 'ABSENT')}
-                                    color="#ef4444"
-                                  />
+                              <td><span className={`badge ${rec.status === 'PRESENT' ? 'badge-present' : 'badge-absent'}`}>{rec.status}</span></td>
+                              <td>
+                                {rec.status === 'PRESENT' ? (
+                                  <button onClick={() => handleModifyAttendance(selectedStudent.id, 'ABSENT', rec.sessionId)}
+                                    className="btn btn-danger" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>
+                                    → Absent
+                                  </button>
                                 ) : (
-                                  <ActionBtn
-                                    label="Mark Present"
-                                    onClick={() => handleModifyAttendance(record.studentId, 'PRESENT')}
-                                    color="#22c55e"
-                                  />
+                                  <button onClick={() => handleModifyAttendance(selectedStudent.id, 'PRESENT', rec.sessionId)}
+                                    className="btn btn-success" style={{ padding: '0.15rem 0.5rem', fontSize: '0.72rem' }}>
+                                    → Present
+                                  </button>
                                 )}
                               </td>
                             </tr>
@@ -381,160 +475,12 @@ function TeacherDashboard() {
                     </div>
                   )}
                 </div>
-              </div>
-            )}
-
-            {/* ===== MANAGE STUDENTS TAB ===== */}
-            {activeTab === 'manage' && selectedCourse && (
-              <div>
-                <div style={{ marginBottom: '1rem' }}>
-                  <h3 style={{ margin: 0 }}>
-                    👥 {selectedCourse.courseName}
-                    <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', fontWeight: 400, marginLeft: '0.5rem' }}>
-                      ({selectedCourse.courseCode})
-                    </span>
-                  </h3>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: studentHistory ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
-                  {/* Student List */}
-                  <div className="card">
-                    <h4 style={{ marginTop: 0 }}>Enrolled Students ({enrolledStudents.length})</h4>
-                    {loadingStudents ? (
-                      <p>Loading...</p>
-                    ) : enrolledStudents.length === 0 ? (
-                      <p style={{ color: 'var(--text-secondary)' }}>No students enrolled yet.</p>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {enrolledStudents.map(student => (
-                          <div key={student.id}
-                            onClick={() => handleStudentClick(student)}
-                            style={{
-                              padding: '0.75rem 1rem',
-                              borderRadius: '0.5rem',
-                              cursor: 'pointer',
-                              background: selectedStudent?.id === student.id ? 'var(--primary-color)11' : 'var(--bg-color)',
-                              border: selectedStudent?.id === student.id ? '1px solid var(--primary-color)' : '1px solid var(--border-color)',
-                              transition: 'all 0.15s',
-                            }}>
-                            <div style={{ fontWeight: 600 }}>{student.name}</div>
-                            <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                              Roll: {student.rollNumber} | Sem {student.semester}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Student History */}
-                  {studentHistory && selectedStudent && (
-                    <div className="card">
-                      <h4 style={{ marginTop: 0 }}>
-                        📋 {selectedStudent.name}'s History
-                        <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-secondary)' }}>
-                          ({selectedStudent.rollNumber})
-                        </span>
-                      </h4>
-                      {studentHistory.length === 0 ? (
-                        <p style={{ color: 'var(--text-secondary)' }}>No sessions conducted yet.</p>
-                      ) : (
-                        <div style={{ overflowY: 'auto', maxHeight: 400 }}>
-                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                            <thead>
-                              <tr style={{ borderBottom: '2px solid var(--border-color)', textAlign: 'left', position: 'sticky', top: 0, background: 'var(--card-bg)' }}>
-                                <th style={{ padding: '0.6rem' }}>Date</th>
-                                <th style={{ padding: '0.6rem' }}>Status</th>
-                                <th style={{ padding: '0.6rem' }}>Change</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {studentHistory.map((rec, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                  <td style={{ padding: '0.6rem' }}>
-                                    {new Date(rec.sessionDate).toLocaleDateString()} <br />
-                                    <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                                      {new Date(rec.sessionDate).toLocaleTimeString()}
-                                    </span>
-                                  </td>
-                                  <td style={{ padding: '0.6rem' }}>
-                                    <StatusBadge status={rec.status} />
-                                  </td>
-                                  <td style={{ padding: '0.6rem' }}>
-                                    {rec.status === 'PRESENT' ? (
-                                      <ActionBtn label="→ Absent" onClick={() => handleModifyAttendance(selectedStudent.id, 'ABSENT', rec.sessionId)} color="#ef4444" />
-                                    ) : (
-                                      <ActionBtn label="→ Present" onClick={() => handleModifyAttendance(selectedStudent.id, 'PRESENT', rec.sessionId)} color="#22c55e" />
-                                    )}
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
-                      {/* Summary */}
-                      {studentHistory.length > 0 && (
-                        <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-color)', borderRadius: '0.5rem', fontSize: '0.85rem' }}>
-                          {(() => {
-                            const present = studentHistory.filter(r => r.status === 'PRESENT').length;
-                            const total = studentHistory.length;
-                            const pct = total > 0 ? Math.round((present / total) * 100) : 0;
-                            const clr = pct >= 75 ? '#22c55e' : pct >= 50 ? '#f59e0b' : '#ef4444';
-                            return (
-                              <div style={{ display: 'flex', justifyContent: 'space-around' }}>
-                                <span>📅 Total: <b>{total}</b></span>
-                                <span style={{ color: '#22c55e' }}>✅ Present: <b>{present}</b></span>
-                                <span style={{ color: '#ef4444' }}>❌ Absent: <b>{total - present}</b></span>
-                                <span style={{ color: clr, fontWeight: 700 }}>{pct}%</span>
-                              </div>
-                            );
-                          })()}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
-  );
-}
-
-function StatusBadge({ status }) {
-  const isPresent = status === 'PRESENT';
-  return (
-    <span style={{
-      display: 'inline-block',
-      padding: '0.2rem 0.75rem',
-      borderRadius: 999,
-      fontWeight: 600,
-      fontSize: '0.78rem',
-      background: isPresent ? '#22c55e22' : '#ef444422',
-      color: isPresent ? '#22c55e' : '#ef4444',
-    }}>
-      {status}
-    </span>
-  );
-}
-
-function ActionBtn({ label, onClick, color }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: '0.2rem 0.6rem',
-      background: color + '22',
-      color: color,
-      border: `1px solid ${color}44`,
-      borderRadius: '4px',
-      cursor: 'pointer',
-      fontSize: '0.78rem',
-      fontWeight: 600,
-    }}>
-      {label}
-    </button>
   );
 }
 

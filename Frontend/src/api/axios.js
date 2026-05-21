@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://8gjmtxp2-8080.inc1.devtunnels.ms/api',
+  baseURL: import.meta.env.VITE_API_URL || 'https://8gjmtxp2-8080.inc1.devtunnels.ms/api',
 });
 
 // Add a request interceptor
