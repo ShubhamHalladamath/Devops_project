@@ -13,7 +13,7 @@ pipeline {
         BACKEND_IMG  = 'shubhamhalladamath/attendance-backend:latest'
         FRONTEND_IMG = 'shubhamhalladamath/attendance-frontend:latest'
 
-        EC2_HOST = 'ec2-15-206-212-30.ap-south-1.compute.amazonaws.com'
+        EC2_HOST = 'ec2-43-204-230-166.ap-south-1.compute.amazonaws.com'
         EC2_USER = 'ubuntu'
 
         // IMPORTANT:
