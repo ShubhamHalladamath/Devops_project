@@ -8,15 +8,6 @@ pipeline {
     // GLOBAL ENVIRONMENT – credentials and static values
     // ----------------------------------------------------
     environment {
-        // Docker Hub credentials (ID: dockerhub) → USERNAME & PASSWORD vars
-        DOCKER_HUB = credentials('dockerhub')   // provides DOCKER_HUB_USERNAME & DOCKER_HUB_PASSWORD
-
-        // EC2 SSH credentials (ID: ec2-ssh) → provides SSH_PRIVATE_KEY
-        EC2_SSH_KEY = credentials('ec2-ssh')   // provides EC2_SSH_KEY
-
-        // Static configuration – edit if your setup changes
-        EC2_HOST        = '13.203.219.213'                     // EC2 public IP
-        EC2_WORKDIR     = '~/Devops_project'                  // folder on EC2 with docker‑compose.yml
         BACKEND_IMG     = 'shubhamhalladamath/attendance-backend:latest'
         FRONTEND_IMG    = 'shubhamhalladamath/attendance-frontend:latest'
     }
@@ -84,25 +75,6 @@ pipeline {
                 '''
             }
         }
-
-        stage('Deploy to EC2') {
-            steps {
-                // Load the EC2 private key into ssh-agent
-                sshagent (credentials: ['ec2-ssh']) {
-                    sh '''
-                        echo "=== Deploying to EC2 (${EC2_HOST}) ==="
-                        ssh -o StrictHostKeyChecking=no ubuntu@${EC2_HOST} <<'EOS'
-                            set -e
-                            cd ${EC2_WORKDIR}
-                            echo "Pulling latest Docker images..."
-                            docker compose pull
-                            echo "Restarting containers..."
-                            docker compose up -d
-                        EOS
-                    '''
-                }
-            }
-        }
     }
 
     // ----------------------------------------------------
@@ -110,7 +82,7 @@ pipeline {
     // ----------------------------------------------------
     post {
         success {
-            echo '✅ Pipeline succeeded – new images are live on EC2.'
+            echo '✅ Pipeline succeeded – images built and pushed to Docker Hub.'
         }
         failure {
             echo '❌ Pipeline failed – check console output for details.'
