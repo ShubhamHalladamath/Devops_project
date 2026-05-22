@@ -121,44 +121,29 @@ pipeline {
         // ------------------------------------------------
         stage('Deploy To AWS EC2') {
 
-            steps {
+    steps {
 
-                sshagent(credentials: ['aws-ec2-key']) {
+        sshagent(credentials: ['aws-ec2-key']) {
 
-                    sh '''
-                    echo "=== Connecting To EC2 ==="
+            sh """
+                ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} '
 
-                    ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << EOF
+                cd ${EC2_APP_DIR}
 
-                    echo "=== Connected To EC2 ==="
+                docker pull ${BACKEND_IMG}
 
-                    cd ${EC2_APP_DIR}
+                docker pull ${FRONTEND_IMG}
 
-                    echo "=== Pulling Latest Docker Images ==="
+                docker compose down
 
-                    docker pull ${BACKEND_IMG}
+                docker compose up -d
 
-                    docker pull ${FRONTEND_IMG}
-
-                    echo "=== Stopping Old Containers ==="
-
-                    docker compose down
-
-                    echo "=== Starting Updated Containers ==="
-
-                    docker compose up -d
-
-                    echo "=== Cleaning Unused Images ==="
-
-                    docker image prune -f
-
-                    echo "=== Deployment Completed Successfully ==="
-
-                    EOF
-                    '''
-                }
-            }
+                docker image prune -f
+                '
+            """
         }
+    }
+}
     }
 
     // ----------------------------------------------------
