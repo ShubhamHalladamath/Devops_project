@@ -21,14 +21,7 @@ pipeline {
         FRONTEND_IMG    = 'shubhamhalladamath/attendance-frontend:latest'
     }
 
-    // ----------------------------------------------------
-    // TRIGGER – GitHub webhook (no polling needed)
-    // ----------------------------------------------------
-    triggers {
-        // GitHub webhook will invoke this job on every push.
-        // No additional trigger syntax required.
-    }
-
+ 
     // ----------------------------------------------------
     // STAGES – sequential workflow
     // ----------------------------------------------------
