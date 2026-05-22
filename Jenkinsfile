@@ -1,38 +1,53 @@
 // ------------------------------------------------------------
-// QR Attendance – CI/CD pipeline (Declarative)
+// QR Attendance – Complete CI/CD + AWS EC2 Deployment Pipeline
 // ------------------------------------------------------------
+
 pipeline {
     agent any
 
     // ----------------------------------------------------
-    // GLOBAL ENVIRONMENT – credentials and static values
+    // GLOBAL ENVIRONMENT
     // ----------------------------------------------------
     environment {
-        BACKEND_IMG     = 'shubhamhalladamath/attendance-backend:latest'
-        FRONTEND_IMG    = 'shubhamhalladamath/attendance-frontend:latest'
+
+        BACKEND_IMG  = 'shubhamhalladamath/attendance-backend:latest'
+        FRONTEND_IMG = 'shubhamhalladamath/attendance-frontend:latest'
+
+        EC2_HOST = 'ec2-15-206-212-30.ap-south-1.compute.amazonaws.com'
+        EC2_USER = 'ubuntu'
+
+        // IMPORTANT:
+        // Change this to your actual EC2 folder
+        // where docker-compose.yml exists
+        EC2_APP_DIR = '/home/ubuntu/attendance-app'
     }
 
- 
     // ----------------------------------------------------
-    // STAGES – sequential workflow
+    // STAGES
     // ----------------------------------------------------
     stages {
 
+        // ------------------------------------------------
+        // Checkout Source Code
+        // ------------------------------------------------
         stage('Checkout Code') {
             steps {
-                // Pull the exact commit that triggered the webhook
                 checkout scm
             }
         }
 
+        // ------------------------------------------------
+        // Docker Hub Login
+        // ------------------------------------------------
         stage('Docker Hub Login') {
             steps {
-                // Use the injected Docker Hub credentials to log in.
+
                 withCredentials([usernamePassword(
                     credentialsId: 'dockerhub',
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
+
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                     '''
@@ -40,58 +55,127 @@ pipeline {
             }
         }
 
+        // ------------------------------------------------
+        // Build Backend Image
+        // ------------------------------------------------
         stage('Build Backend Image') {
             steps {
+
                 sh '''
                     echo "=== Building Backend Docker Image ==="
-                    docker build -t ${BACKEND_IMG} ./Backend
+
+                    docker build \
+                    -t ${BACKEND_IMG} \
+                    ./Backend
                 '''
             }
         }
 
+        // ------------------------------------------------
+        // Push Backend Image
+        // ------------------------------------------------
         stage('Push Backend Image') {
             steps {
+
                 sh '''
                     echo "=== Pushing Backend Docker Image ==="
+
                     docker push ${BACKEND_IMG}
                 '''
             }
         }
 
+        // ------------------------------------------------
+        // Build Frontend Image
+        // ------------------------------------------------
         stage('Build Frontend Image') {
             steps {
+
                 sh '''
                     echo "=== Building Frontend Docker Image ==="
-                    docker build --build-arg VITE_API_URL=/api -t ${FRONTEND_IMG} ./Frontend
+
+                    docker build \
+                    --build-arg VITE_API_URL=/api \
+                    -t ${FRONTEND_IMG} \
+                    ./Frontend
                 '''
             }
         }
 
+        // ------------------------------------------------
+        // Push Frontend Image
+        // ------------------------------------------------
         stage('Push Frontend Image') {
             steps {
+
                 sh '''
                     echo "=== Pushing Frontend Docker Image ==="
+
                     docker push ${FRONTEND_IMG}
                 '''
             }
         }
+
+        // ------------------------------------------------
+        // Deploy To AWS EC2
+        // ------------------------------------------------
+        stage('Deploy To AWS EC2') {
+
+            steps {
+
+                sshagent(credentials: ['aws-ec2-key']) {
+
+                    sh '''
+                    echo "=== Connecting To EC2 ==="
+
+                    ssh -o StrictHostKeyChecking=no ${EC2_USER}@${EC2_HOST} << EOF
+
+                    echo "=== Connected To EC2 ==="
+
+                    cd ${EC2_APP_DIR}
+
+                    echo "=== Pulling Latest Docker Images ==="
+
+                    docker pull ${BACKEND_IMG}
+
+                    docker pull ${FRONTEND_IMG}
+
+                    echo "=== Stopping Old Containers ==="
+
+                    docker compose down
+
+                    echo "=== Starting Updated Containers ==="
+
+                    docker compose up -d
+
+                    echo "=== Cleaning Unused Images ==="
+
+                    docker image prune -f
+
+                    echo "=== Deployment Completed Successfully ==="
+
+                    EOF
+                    '''
+                }
+            }
+        }
     }
 
     // ----------------------------------------------------
-    // POST – notifications & cleanup
+    // POST ACTIONS
     // ----------------------------------------------------
     post {
+
         success {
-            echo '✅ Pipeline succeeded – images built and pushed to Docker Hub.'
+            echo '✅ Pipeline succeeded – application deployed to AWS EC2.'
         }
+
         failure {
-            echo '❌ Pipeline failed – check console output for details.'
+            echo '❌ Pipeline failed – check console logs.'
         }
+
         always {
-            echo 'Pipeline execution finished (success or failure).'
+            echo 'Pipeline execution completed.'
         }
     }
 }
-
-
-// changed it 
