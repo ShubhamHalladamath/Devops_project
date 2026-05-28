@@ -1,0 +1,32 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: attendance-service
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/attendance_db?useSSL=false&serverTimezone=UTC
+    username: root
+    password: NewPassword123
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+jwt:
+  secret: your-auth-secret-key-minimum-32-characters-long
+  expiration: 86400000
+  refresh-expiration: 604800000
+  qr-secret: your-qr-secret-key-must-be-different-from-auth
+  qr-expiration: 180000
+
+logging:
+  level:
+    com.attendance: DEBUG
