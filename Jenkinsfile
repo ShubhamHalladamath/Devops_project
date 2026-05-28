@@ -10,10 +10,10 @@ pipeline {
     // ----------------------------------------------------
     environment {
 
-        BACKEND_IMG  = 'shubhamhalladamath/attendance-backend:v1'
-        FRONTEND_IMG = 'shubhamhalladamath/attendance-frontend:v1'
+        BACKEND_IMG  = 'shubhamhalladamath/attendance-backend:v2'
+        FRONTEND_IMG = 'shubhamhalladamath/attendance-frontend:v2'
 
-        EC2_HOST = 'ec2-3-109-3-61.ap-south-1.compute.amazonaws.com '
+        EC2_HOST = 'ec2-13-201-223-208.ap-south-1.compute.amazonaws.com'
         EC2_USER = 'ubuntu'
 
         // IMPORTANT:
